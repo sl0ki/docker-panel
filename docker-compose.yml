@@ -1,0 +1,10 @@
+# main DNS server for workdlow
+python.dev:
+    image: python:2.7
+    container_name: python.dev
+    volumes:
+        - /shared/python.dev/:/app
+        - /var/run/docker.sock:/docker.sock
+    ports:
+        - "9000:9000"
+    tty: true
