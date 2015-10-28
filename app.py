@@ -26,12 +26,20 @@ class MenuItem(urwid.WidgetWrap):
 
     def __init__(self, container):
         self.container = container
-        cols = []
-        cols.append(urwid.Text(self.container[u'Names'][0]))
-        cols.append(urwid.Text((self.container[u'Status'])))
-        cols.append(('weight', 1, urwid.Text(self.container[u'Command'])))
-        cols.append(urwid.Text(self.container[u'Image']))
-        cols = urwid.Columns(cols)
+
+        name = self.container[u'Names'][0]
+        status = self.container[u'Status']
+        command = self.container[u'Command']
+        image = self.container[u'Image']
+
+        cols = urwid.Columns( [
+            # urwid.AttrWrap(urwid.Text("Weight 1", align='left', wrap='clip')),
+            ('weight', 10, urwid.Text(name, align='left', wrap='clip')),
+            ('weight', 7, urwid.Text(status, align='left', wrap='clip')),
+            ('weight', 12, urwid.Text(image, align='left', wrap='clip')),
+            ('weight', 12, urwid.Text(command , align='left', wrap='any')),
+            ]),
+        cols = urwid.Columns(cols, dividechars=1)
         w = urwid.AttrMap(cols, None ,'focustext')
         self.__super.__init__(w)
 
