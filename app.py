@@ -1,44 +1,31 @@
 from docker import Client
 import json
 import urwid
-
-def key_press(key):
-    if key in ('q', 'Q'):
-        raise urwid.ExitMainLoop()
-
-
 from docker import Client
-api = Client(base_url='unix://var/run/docker.sock', version='auto')
-
-palette = [
-    # ('body','black','light gray', 'standout'),
-    # ('border','black','dark blue'),
-    # ('shadow','white','black'),
-    # ('selectable','black', 'dark cyan'),
-    # ('focus','white','dark blue','bold'),
-    ('focustext','light gray','dark cyan'),
-    ]
+from twisted.internet import pollreactor
+pollreactor.install()
+from twisted.internet import reactor, defer
 
 
-class MenuItem(urwid.WidgetWrap):
+
+class ContainerListItem(urwid.WidgetWrap):
 
     container = None
 
     def __init__(self, container):
         self.container = container
 
-        name = self.container[u'Names'][0]
+        name = self.container[u'Names'][0][1:]
         status = self.container[u'Status']
         command = self.container[u'Command']
         image = self.container[u'Image']
 
-        cols = urwid.Columns( [
-            # urwid.AttrWrap(urwid.Text("Weight 1", align='left', wrap='clip')),
+        cols = urwid.Columns([
             ('weight', 10, urwid.Text(name, align='left', wrap='clip')),
             ('weight', 7, urwid.Text(status, align='left', wrap='clip')),
             ('weight', 12, urwid.Text(image, align='left', wrap='clip')),
-            ('weight', 12, urwid.Text(command , align='left', wrap='any')),
-            ]),
+            ('weight', 12, urwid.Text(command , align='left', wrap='clip')),
+        ]),
         cols = urwid.Columns(cols, dividechars=1)
         w = urwid.AttrMap(cols, None ,'focustext')
         self.__super.__init__(w)
@@ -51,17 +38,37 @@ class MenuItem(urwid.WidgetWrap):
             print "Select"
         return key
 
-l = []
 
-containers = api.containers(filters={'status': 'running'})
-# print containers[0]
-# exit()
-for container in containers:
-    l.append(MenuItem(container))
+class ContainerList(urwid.ListBox):
 
-listbox = urwid.ListBox(urwid.SimpleFocusListWalker(l))
-frame = urwid.Frame(urwid.AttrWrap(listbox, 'body'))
+    def __init__(self, args={}):
+        super(ContainerList, self).__init__(urwid.SimpleFocusListWalker([]))
+        self.update()
+
+    def update(self):
+        containers = docker_api.containers(filters={'status': 'running'})
+        l = []
+        for container in containers:
+            l.append(ContainerListItem(container))
+        self.body[:] = urwid.SimpleFocusListWalker(l)
 
 
-loop = urwid.MainLoop(frame, palette, unhandled_input=key_press)
-loop.run()
+class Ui:
+
+    frame = None
+
+    def __init__(self):
+        listbox = ContainerList()
+        self.frame = urwid.Frame(urwid.AttrWrap(listbox, 'body'))
+
+    def key_press(self, key):
+        if key in ('q', 'Q'):
+            raise urwid.ExitMainLoop()
+
+
+docker_api = Client(base_url='unix://var/run/docker.sock', version='auto')
+palette = [ ('focustext','light gray','dark cyan') ]
+ui = Ui()
+
+urwid.MainLoop(ui.frame, palette, unhandled_input=ui.key_press, event_loop=urwid.TwistedEventLoop(reactor=reactor)).run()
+reactor.run()
