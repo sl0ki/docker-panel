@@ -20,8 +20,11 @@ class ContainerListItem(urwid.WidgetWrap):
         command = self.container[u'Command']
         image = self.container[u'Image']
 
+        name = urwid.Text(name, align='left', wrap='clip')
+        name = urwid.AttrMap(name, 'container_name', 'container_name_focus')
+
         cols = urwid.Columns([
-            ('weight', 10, urwid.Text(name, align='left', wrap='clip')),
+            ('weight', 10, name),
             ('weight', 7, urwid.Text(status, align='left', wrap='clip')),
             ('weight', 12, urwid.Text(image, align='left', wrap='clip')),
             ('weight', 12, urwid.Text(command, align='left', wrap='clip')),
@@ -66,7 +69,12 @@ class ContainerList(urwid.ListBox):
 
 class Ui:
 
-    palette = [('focustext', 'light gray', 'dark cyan'), ('footer', 'light gray', 'dark cyan')]
+    palette = [
+        ('focustext', 'light gray', 'dark cyan'),
+        ('container_name', '', ''),
+        ('container_name_focus', 'light gray', 'dark cyan'),
+        ('footer', 'light gray', ''),
+    ]
     filter = {'status': 'running'}
 
     def __init__(self):
