@@ -15,23 +15,32 @@ class ContainerListItem(urwid.WidgetWrap):
     def __init__(self, container):
         self.container = container
 
+        icon = u"\u25CF"
         name = self.container[u'Names'][0][1:]
         status = self.container[u'Status']
         command = self.container[u'Command']
         image = self.container[u'Image']
 
+        attr = 'cnt_item_' + ('off' if 'Exit' in status else 'on')
+        icon = urwid.Text(u"\u25CF", align='center', wrap='clip')
+        icon = urwid.AttrMap(icon, attr)
+
         name = urwid.Text(name, align='left', wrap='clip')
-        name = urwid.AttrMap(name, 'container_name', 'container_name_focus')
+        name = urwid.AttrMap(name, 'cnt_name', 'cnt_name_focus')
+
+        command = urwid.Text(command, align='left', wrap='clip')
+        # command = urwid.AttrMap(command, 'cnt_info', 'cnt_name_focus')
 
         cols = urwid.Columns([
-            ('weight', 10, name),
-            ('weight', 7, urwid.Text(status, align='left', wrap='clip')),
+            # ('weight', 1, icon),
+            ('weight', 8, name),
+            ('weight', 6, urwid.Text(status, align='left', wrap='clip')),
             ('weight', 12, urwid.Text(image, align='left', wrap='clip')),
-            ('weight', 12, urwid.Text(command, align='left', wrap='clip')),
+            ('weight', 12, command),
         ]),
-        cols = urwid.Columns(cols, dividechars=1)
-        w = urwid.AttrMap(cols, None, 'focustext')
-        self.__super.__init__(w)
+        cols = urwid.Columns(cols, dividechars=0)
+        cols = urwid.AttrMap(cols, 'cnt_item', 'cnt_item_focus')
+        self.__super.__init__(cols)
 
     def selectable(self):
         return True
@@ -70,10 +79,20 @@ class ContainerList(urwid.ListBox):
 class Ui:
 
     palette = [
-        ('focustext', 'light gray', 'dark cyan'),
-        ('container_name', '', ''),
-        ('container_name_focus', 'light gray', 'dark cyan'),
-        ('footer', 'light gray', ''),
+
+        ('cnt_item_focus', 'black', 'dark cyan'),
+        ('cnt_item', 'dark gray', ''),
+
+        ('cnt_item_on', 'dark green', ''),
+        ('cnt_item_off', 'dark red', ''),
+
+        ('cnt_name', '', ''),
+        ('cnt_name_focus', 'black', 'dark cyan'),
+
+        ('cnt_info', 'dark gray', ''),
+        ('cnt_info_focus', 'black', 'dark cyan'),
+
+        # ('footer', 'light gray', ''),
     ]
     filter = {'status': 'running'}
 
