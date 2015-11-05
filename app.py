@@ -8,6 +8,69 @@ import urwid
 import gevent
 
 
+class ModalWindow(urwid.WidgetWrap):
+
+    parent = None
+    overlay = True
+    linebox = True
+
+    def __init__(self, body, loop, width=0, height=0):
+
+        self.parent = loop.widget
+        self.body = body
+        if body is None:
+            # fill space with nothing
+            body = urwid.Filler(urwid.Divider(), 'top')
+
+        self.frame = urwid.Frame(body, focus_part='footer')
+        w = self.frame
+
+        # pad area around listbox
+        w = urwid.Padding(w, ('fixed left',2), ('fixed right',2))
+        w = urwid.Filler(w, ('fixed top',1), ('fixed bottom',1))
+
+        if self.linebox == True:
+            w = urwid.LineBox(w)
+        if self.overlay == True:
+            w = urwid.Overlay(w, self.parent, 'center', width + 2, 'middle', height + 2)
+
+        self.loop = loop
+        self.view = w
+
+    def add_buttons(self, buttons):
+        l = []
+        for name, exitcode in buttons:
+            b = urwid.Button(name, self.button_press)
+            b.exitcode = exitcode
+            b = urwid.AttrWrap(b, 'button normal', 'button select')
+            l.append(b)
+        self.buttons = urwid.GridFlow(l, 10, 3, 1, 'center')
+        self.frame.footer = self.buttons
+
+    def keypress(self, size, key):
+        print key
+        if key in ('m', 'M'):
+            self.hide()
+
+    def button_press(self, button):
+        self.hide()
+
+    def show(self):
+        self.loop.widget = self.view
+
+    def hide(self):
+        self.loop.widget = self.parent
+
+class ContainerLogs(ModalWindow):
+
+    overlay = False
+    linebox = False
+
+    def __init__(self, logs, loop):
+        logs = urwid.Filler(urwid.Text(logs), 'top')
+        self.__super.__init__(logs, loop)
+
+
 class ContainerListItem(urwid.WidgetWrap):
 
     container = None
@@ -15,31 +78,33 @@ class ContainerListItem(urwid.WidgetWrap):
     def __init__(self, container):
         self.container = container
 
-        icon = u"\u25CF"
         name = self.container[u'Names'][0][1:]
         status = self.container[u'Status']
         command = self.container[u'Command']
         image = self.container[u'Image']
 
         attr = 'cnt_item_' + ('off' if 'Exit' in status else 'on')
-        icon = urwid.Text(u"\u25CF", align='center', wrap='clip')
+        icon = urwid.Text(u"\u25CF ", align='center', wrap='clip')
         icon = urwid.AttrMap(icon, attr)
 
-        name = urwid.Text(name, align='left', wrap='clip')
-        name = urwid.AttrMap(name, 'cnt_name', 'cnt_name_focus')
-
-        command = urwid.Text(command, align='left', wrap='clip')
-        # command = urwid.AttrMap(command, 'cnt_info', 'cnt_name_focus')
+        name = urwid.AttrMap(urwid.Text(name, align='left', wrap='clip'), 'cnt_name');
+        status = urwid.AttrMap(urwid.Text(status, align='left', wrap='clip'), 'cnt_info');
+        image = urwid.AttrMap(urwid.Text(image, align='left', wrap='clip'), 'cnt_info');
+        command = urwid.AttrMap(urwid.Text(command, align='left', wrap='clip'), 'cnt_info');
 
         cols = urwid.Columns([
-            # ('weight', 1, icon),
+            ('weight', 1, icon),
             ('weight', 8, name),
-            ('weight', 6, urwid.Text(status, align='left', wrap='clip')),
-            ('weight', 12, urwid.Text(image, align='left', wrap='clip')),
+            ('weight', 6, status),
+            ('weight', 12, image),
             ('weight', 12, command),
         ]),
         cols = urwid.Columns(cols, dividechars=0)
-        cols = urwid.AttrMap(cols, 'cnt_item', 'cnt_item_focus')
+        cols = urwid.AttrMap(cols, 'cnt_item', {
+            'default'   : 'cnt_item_focus',
+            'cnt_name'  : 'cnt_item_focus',
+            'cnt_info'  : 'cnt_item_focus',
+        })
         self.__super.__init__(cols)
 
     def selectable(self):
@@ -48,14 +113,6 @@ class ContainerListItem(urwid.WidgetWrap):
     def keypress(self, size, key):
         return key
 
-    def _start(self, id):
-        pass
-
-    def _stop(self, id):
-        gevent.spawn(docker_api.stop(container=id))
-
-    def _log(self, id):
-        pass
 
 class ContainerList(urwid.ListBox):
 
@@ -67,6 +124,7 @@ class ContainerList(urwid.ListBox):
         for container in containers:
             l.append(ContainerListItem(container))
         self.body[:] = urwid.SimpleFocusListWalker(l)
+        self.set_focus_path(self.get_focus_path())
 
     def get_selected(self):
         return self.focus.container[u'Id']
@@ -79,6 +137,14 @@ class ContainerList(urwid.ListBox):
 class Ui:
 
     palette = [
+        ('body','black','white'),
+        ('border','black','white'),
+        ('shadow','white','black'),
+        ('selectable','black', 'dark cyan'),
+        ('focus','black','dark cyan','bold'),
+        ('focustext','light gray','dark blue'),
+        # ('button normal','light gray', 'dark blue', 'standout'),
+        ('button select','black',  'dark cyan'),
 
         ('cnt_item_focus', 'black', 'dark cyan'),
         ('cnt_item', 'dark gray', ''),
@@ -87,12 +153,9 @@ class Ui:
         ('cnt_item_off', 'dark red', ''),
 
         ('cnt_name', '', ''),
-        ('cnt_name_focus', 'black', 'dark cyan'),
-
         ('cnt_info', 'dark gray', ''),
-        ('cnt_info_focus', 'black', 'dark cyan'),
 
-        # ('footer', 'light gray', ''),
+        ('footer', 'dark gray', ''),
     ]
     filter = {'status': 'running'}
 
@@ -113,7 +176,8 @@ class Ui:
         footer = urwid.AttrMap(urwid.Text(footer_text, align='left'), 'footer')
         # footer = urwid.AttrWrap(urwid.Edit(text_edit_cap3, text_edit_text3, wrap='clip' ), 'footer'),
         footer = urwid.AttrMap(urwid.Edit(caption=u'Filter: ', edit_text=u'text', multiline=False, align='left', wrap='space'), 'footer')
-        self.frame.footer = footer
+        status = urwid.AttrMap(urwid.Text('all/run  34/46', align='right'), 'footer_status');
+        self.frame.footer = urwid.Columns([footer, status])
         # self.frame.set_focus('footer')
 
     def get_containers(self):
@@ -136,14 +200,15 @@ class Ui:
         if key in ('tab'):
             self.switch_focus()
         # update
-        if key in ('u', 'U'):
-            self.update()
+        if key in ('u', 'U'): self.update()
         # stop
-        if key in ('s', 'S'):
-            self._stop(cid)
+        if key in ('s', 'S'): self._stop(cid)
         # run
-        if key in ('r', 'R'):
-            self._start(cid)
+        if key in ('r', 'R'): self._start(cid)
+        # delete
+        if key in ('d', 'D'): self._delete(cid)
+        # delete
+        if key in ('l', 'L'): self._logs(cid)
         # show all (on/off)
         if key in ('a', 'A'):
             self.switch_filter()
@@ -161,8 +226,19 @@ class Ui:
     def _stop(self, cid):
         docker_api.stop(cid)
 
+    def _delete(self, cid):
+        modal = ModalWindow(None, self.loop, 40, 7)
+        modal.add_buttons([ ("Yes", 0), ("No", 0) ])
+        modal.show()
+        # docker_api.delete(cid)
+
     def _start(self, cid):
         docker_api.start(cid)
+
+    def _logs(self, cid):
+        logs = docker_api.logs(container=cid,stdout=True,stderr=True,stream=False,tail=5)
+        modal = ContainerLogs(logs, self.loop)
+        modal.show()
 
 
 def event_watcher(callback):
