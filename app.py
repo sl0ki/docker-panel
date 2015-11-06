@@ -16,26 +16,25 @@ class ModalWindow(urwid.WidgetWrap):
 
     def __init__(self, body, loop, width=0, height=0):
 
-        self.parent = loop.widget
         self.body = body
+        self.loop = loop
+        self.parent = loop.widget
+
         if body is None:
-            # fill space with nothing
             body = urwid.Filler(urwid.Divider(), 'top')
 
         self.frame = urwid.Frame(body, focus_part='footer')
-        w = self.frame
+        widget = self.frame
 
-        # pad area around listbox
-        w = urwid.Padding(w, ('fixed left',2), ('fixed right',2))
-        w = urwid.Filler(w, ('fixed top',1), ('fixed bottom',1))
-
+        # decoration
+        widget = urwid.Padding(widget, ('fixed left',2), ('fixed right',2))
+        widget = urwid.Filler(widget, ('fixed top',1), ('fixed bottom',1))
         if self.linebox == True:
-            w = urwid.LineBox(w)
+            widget = urwid.LineBox(widget)
         if self.overlay == True:
-            w = urwid.Overlay(w, self.parent, 'center', width + 2, 'middle', height + 2)
+            widget = urwid.Overlay(widget, self.parent, 'center', width + 2, 'middle', height + 2)
 
-        self.loop = loop
-        self.view = w
+        super(ModalWindow, self).__init__(widget)
 
     def add_buttons(self, buttons):
         l = []
@@ -48,15 +47,16 @@ class ModalWindow(urwid.WidgetWrap):
         self.frame.footer = self.buttons
 
     def keypress(self, size, key):
-        print key
-        if key in ('m', 'M'):
-            self.hide()
+        if key in ('q', 'Q', 'esc'):
+             self.hide()
+        else:
+            super(ModalWindow, self).keypress(size, key)
 
     def button_press(self, button):
         self.hide()
 
     def show(self):
-        self.loop.widget = self.view
+        self.loop.widget = self
 
     def hide(self):
         self.loop.widget = self.parent
@@ -67,7 +67,7 @@ class ContainerLogs(ModalWindow):
     linebox = False
 
     def __init__(self, logs, loop):
-        logs = urwid.Filler(urwid.Text(logs), 'top')
+        logs = urwid.Filler(urwid.Text(logs), 'bottom')
         self.__super.__init__(logs, loop)
 
 
@@ -236,7 +236,7 @@ class Ui:
         docker_api.start(cid)
 
     def _logs(self, cid):
-        logs = docker_api.logs(container=cid,stdout=True,stderr=True,stream=False,tail=5)
+        logs = docker_api.logs(container=cid,stdout=True,stderr=True,stream=False,tail=50)
         modal = ContainerLogs(logs, self.loop)
         modal.show()
 
@@ -252,4 +252,3 @@ docker_api = Client(base_url='unix://var/run/docker.sock', version='auto')
 ui = Ui()
 gevent.spawn(event_watcher, ui.update)
 ui.run()
-# reactor.run()
