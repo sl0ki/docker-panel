@@ -20,6 +20,7 @@ palette = [
     ('footer', 'dark gray', ''),
 
     ('help_key', 'brown', ''),
+    ('text_danged', 'dark red', ''),
 ]
 
 hotkey = [

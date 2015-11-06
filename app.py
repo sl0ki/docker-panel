@@ -176,7 +176,9 @@ class Ui:
         docker_api.stop(cid)
 
     def _delete(self, cid):
-        modal = ModalWindow(None, self.loop, 40, 7)
+        body = urwid.Text(('text_danged', 'Are you sure to delete this container ? '), align='center');
+        body = urwid.Filler(body)
+        modal = ModalWindow(body, self.loop, 45, 7)
         modal.add_buttons([ ("Yes", 0), ("No", 0) ])
         modal.show()
         # docker_api.delete(cid)
@@ -187,7 +189,6 @@ class Ui:
     def _logs(self, cid):
         logs = docker_api.logs(container=cid,stdout=True,stderr=True,stream=False,tail=50)
         modal = ContainerLogs(logs, self.loop)
-        modal.show()
 
 
 def event_watcher(callback):
