@@ -1,3 +1,6 @@
+from gevent import monkey
+monkey.patch_all()
+
 from docker import Client
 import json
 import urwid
