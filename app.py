@@ -100,7 +100,7 @@ class ContainerList(urwid.ListBox):
         self.set_focus_path(self.get_focus_path())
 
     def get_selected(self):
-        return self.focus.container[u'Id']
+        return self.focus.container[u'Id'] if hasattr(self.focus, 'container') else None
 
 
 #-------------------------------------------------------------------------------
@@ -144,15 +144,24 @@ class Ui:
         self.frame.set_focus(focused)
 
     def key_press(self, key):
-        # print key
-        cid = self.listbox.get_selected()
+        # show all (on/off)
+        if key in ('a', 'A'):
+            self.switch_filter()
+            self.update()
+            self.frame.set_focus('body')
         # update
-        if key in ('tab'):
-            self.switch_focus()
+        if key in ('tab'): self.switch_focus()
         # help window
         if key in ('h', 'H'): HelpWindow(self.loop)
         # update
         if key in ('u', 'U'): self.update()
+        # quit
+        if key in ('q', 'Q'):
+            raise urwid.ExitMainLoop()
+
+        # get selected container ID
+        cid = self.listbox.get_selected()
+        if cid == None: return
         # stop
         if key in ('s', 'S'): self._stop(cid)
         # run
@@ -161,14 +170,6 @@ class Ui:
         if key in ('d', 'D'): self._delete(cid)
         # delete
         if key in ('l', 'L'): self._logs(cid)
-        # show all (on/off)
-        if key in ('a', 'A'):
-            self.switch_filter()
-            self.frame.set_focus('body')
-            self.update()
-        # quit
-        if key in ('q', 'Q'):
-            raise urwid.ExitMainLoop()
 
     def update(self):
         self.listbox.update(self.get_containers())
