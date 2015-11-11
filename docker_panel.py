@@ -1,3 +1,6 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
 from gevent import monkey
 monkey.patch_all()
 
@@ -9,6 +12,17 @@ import gevent
 from modal import ModalWindow
 import config
 
+
+class ErrorWindow(ModalWindow):
+
+    def __init__(self, loop, msg):
+        self.__super.__init__(self.get_body(msg), loop, 80, 5)
+        self.show()
+
+    def get_body(self, msg):
+        msg = urwid.Text(('text_danged', msg))
+        msg = urwid.Filler(msg)
+        return msg
 
 class HelpWindow(ModalWindow):
 
@@ -116,7 +130,7 @@ class Ui:
 
         self.frame = urwid.Frame(urwid.AttrWrap(self.listbox, 'body'))
         self.render_footer()
-        self.loop = urwid.MainLoop(self.frame, config.palette, unhandled_input=self.key_press)
+        self.loop = urwid.MainLoop(self.frame, config.palette, handle_mouse=False, unhandled_input=self.key_press)
 
     def run(self):
         self.loop.run()
@@ -150,7 +164,7 @@ class Ui:
             self.update()
             self.frame.set_focus('body')
         # update
-        if key in ('tab'): self.switch_focus()
+        #if key in ('tab'): self.switch_focus()
         # help window
         if key in ('h', 'H'): HelpWindow(self.loop)
         # update
@@ -188,7 +202,11 @@ class Ui:
         # docker_api.delete(cid)
 
     def _start(self, cid):
-        docker_api.start(cid)
+        try:
+            docker_api.start(cid)
+        except BaseException as e:
+            ErrorWindow(self.loop, str(e))
+            # self.frame.footer = urwid.Text(str(e))
 
     def _logs(self, cid):
         logs = docker_api.logs(container=cid,stdout=True,stderr=True,stream=False,tail=50)
@@ -204,7 +222,16 @@ def event_watcher(callback):
 
 #-------------------------------------------------------------------------------
 
-docker_api = Client(base_url='unix://var/run/docker.sock', version='auto')
-ui = Ui()
-gevent.spawn(event_watcher, ui.update)
-ui.run()
+docker_api = None
+
+def main():
+    global docker_api
+    docker_api = Client(base_url='unix://var/run/docker.sock', version='auto')
+    ui = Ui()
+    gevent.spawn(event_watcher, ui.update)
+    ui.run()
+
+#-------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    main()

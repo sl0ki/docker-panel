@@ -1,11 +1,6 @@
-# main DNS server for workdlow
-docker-panel:
-    image: python:2.7
+python.dev:
+    build: .
     container_name: docker-panel
-    working_dir: /app
     volumes:
-        - /shared/docker-panel/:/app
-        - /var/run/docker.sock:/var/run/docker.sock
-    ports:
-        - "9000:9000"
+        - /var/run/docker.sock:/docker.sock
     tty: true

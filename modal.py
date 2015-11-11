@@ -25,7 +25,7 @@ class ModalWindow(urwid.WidgetWrap):
         if self.linebox == True:
             widget = urwid.LineBox(widget)
         if self.overlay == True:
-            widget = urwid.Overlay(widget, self.parent, 'center', width + 2, 'middle', height + 2)
+            widget = urwid.Overlay(widget, self.parent, 'center', width + 2, ('relative', 30), height + 2)
 
         super(ModalWindow, self).__init__(widget)
 
