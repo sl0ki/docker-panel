@@ -1,0 +1,5 @@
+build/
+dist/
+docker_panel.egg-info/
+*.pyc
+._*

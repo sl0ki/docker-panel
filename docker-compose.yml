@@ -1,6 +1,6 @@
-python.dev:
+docker-panel:
     build: .
     container_name: docker-panel
     volumes:
-        - /var/run/docker.sock:/docker.sock
+        - /var/run/docker.sock:/var/run/docker.sock
     tty: true
